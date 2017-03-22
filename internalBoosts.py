@@ -10,3 +10,5 @@ boostsGeneral = {"person":4,"organization":4, "location":2, "WORK_OF_ART":2}
 boosts = {"politics":{"person":4,"organization":4, "location":2, "WORK_OF_ART":2}, 
                                "sports": {"person":4,"organization":4, "location":2, "WORK_OF_ART":2}}
 boostForPropper = 10
+
+boostForProperMentionInSummary = 1.5
