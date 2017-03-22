@@ -88,14 +88,19 @@ class sbExtractor:
 
     
     
-    
-    
     def __init__(self, articleAsString, annotationsAsJsonString, useOfflineSentences=False):
         self.articleAsString = articleAsString
         self.lengthOfDocument = len(articleAsString)
         # self.annotationDict = self.__gcpAnnotation__(articleAsString) - this is the right one but the API call is not implemented yet
-        tempDict = self.__gcpAnnotation__(annotationsAsJsonString)
+        tempDict = self.__gcpAnnotation__(annotationsAsJsonString) #gets the full gcp annotation dictionary
+        language = "en"
         self.entitiesDict = tempDict["entitiesDict"]
+        #add white list annotations
+        if ("language" in tempDict):
+            language = tempDict["language"]
+        whiteList = self.__whiteListAnnotations__(articleAsString, language)
+        self.entitiesDict["entities"] += whiteList
+        
         self.sentencesDict = {}
         if (useOfflineSentences):
             self.sentencesDict = self.sentenceOffsetsAndSentimentBlob(articleAsString)
@@ -105,6 +110,69 @@ class sbExtractor:
         self.sentencesDict["sentences"]=sorted(self.sentencesDict["sentences"], key = lambda sentenceTemp: sentenceTemp["text"]["beginOffset"])  
         self.sentenceRelevances()
     
+    
+    def __whiteListAnnotations__(self, articleAsString, language = "en"):
+        """ annotate white list entities """
+        whiteListDict = whiteList.whiteList["GENERAL"] + whiteList.whiteList[language]
+        totalLength = len(articleAsString)
+        annotationSet = []
+        for entity in whiteListDict:
+            entityAnnotation = {}
+            entityAnnotation["name"]= entity["preferredLabel"]
+            entityAnnotation["type"]= entity["type"]
+            entityAnnotation["metadata"]={"White_List":True}
+            entityAnnotation["boost"]=entity["boost"]
+            entityAnnotation["mentions"] = []
+            surfaceForms = entity["aliases"].append(entity["preferredLabel"])
+            salience = 0
+            for surfaceForm in surfaceForms:
+                beginOffsets = self.findAllSubstringOffsets(articleAsString, surfaceForm)
+                salience += self.__calculateOffsetRelevance__(totalLength, beginOffsets)
+                for offset in beginOffsets:
+                    entityAnnotation["mentions"].append({"text": {"content": surfaceForm,"beginOffset": offset},"type": entity["typeP"]})
+            entityAnnotation["salience"] = salience      
+            annotationSet.append(entityAnnotation)  
+        return annotationSet
+            
+    def __calculateOffsetRelevance__(totalLength, listOfOffsets):
+        relevance = 0
+        for offset in listOfOffsets:
+            relevance += totalLength/(offset + totalLength)
+        return relevance
+    
+    def findAllSubstringOffsets(self, articleString, entityForm):
+        result = []
+        k = 0
+        articleString.lower()
+        entityForm.lower()
+        while k < len(articleString):
+            k = articleString.find(entityForm, k)
+            if k == -1:
+                return result
+            else:
+                result.append(k)
+                k += len(entityForm) 
+        return result
+
+    
+    def __addVotabilityScores__(self):
+        for entity in self.entitiesDict["entities"]:
+            votability = entity["salience"]
+            if (not ( ("White_List" in entity["metadata"] ) or ("wikipedia_url" in entity["metadata"] ) ) ) :
+                votability = 0
+            elif (  ("White_List" in entity["metadata"] ) and  ("boost" in entity ) ):
+                votability *= entity["boost"]
+            else:
+                # TODO add boosts
+                boost = 1
+                if (entity["type"] in internalBoosts.boostsGeneral):
+                    boost = internalBoosts.boostsGeneral[entity["type"]]
+                votability *= boost
+                entity["votability"] = votability
+        return self.entitiesDict
+                
+
+        
     def __gcpAnnotation__(self,textAsString):
         """Call gcp with a string to get initial annotations.
         Transform data in a python dictionary"""
@@ -249,13 +317,13 @@ class sbExtractor:
             return  listOfSentences   
            
         
-        def conceptSummaryInternal(self,entityName, nbSentences):
+    def conceptSummary(self,entityName, nbSentences):
         """summary wrt to a concept""" 
-            listOfSentences = self.conceptSummaryInternal(entityName, nbOfSentences)
-            summaryAsString = listOfSentences[0]["text"]["content"]
-            for sentenceIdx in range(1,len(listOfSentences)):
-                summaryAsString = summaryAsString + " " + listOfSentences[sentenceIdx]["text"]["content"]
-            return summaryAsString
+        listOfSentences = self.conceptSummaryInternal(entityName, nbSentences)
+        summaryAsString = listOfSentences[0]["text"]["content"]
+        for sentenceIdx in range(1,len(listOfSentences)):
+            summaryAsString = summaryAsString + " " + listOfSentences[sentenceIdx]["text"]["content"]
+        return summaryAsString
                                 
                            
     
@@ -265,7 +333,7 @@ class sbExtractor:
     def getSentences(self):
         return self.sentencesDict
     
-    def getSentence(indexOfTheSentence):
+    def getSentence(self,indexOfTheSentence):
         sentenceIndex = min(indexOfTheSentence, len(self.sentencesDict["sentences"]) )
         return self.sentencesDict["sentences"][sentenceIndex]
     
