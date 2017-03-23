@@ -86,8 +86,6 @@ class sbExtractor:
 #    
 #    
 
-    
-    
     def __init__(self, articleAsString, annotationsAsJsonString, useOfflineSentences=False):
         self.articleAsString = articleAsString
         self.lengthOfDocument = len(articleAsString)
@@ -113,7 +111,7 @@ class sbExtractor:
     
     def __whiteListAnnotations__(self, articleAsString, language = "en"):
         """ annotate white list entities """
-        whiteListDict = whiteList.whiteList["GENERAL"] + whiteList.whiteList[language]
+        whiteListDict = whiteList.whiteList["general"] + whiteList.whiteList[language]
         totalLength = len(articleAsString)
         annotationSet = []
         for entity in whiteListDict:
@@ -123,18 +121,39 @@ class sbExtractor:
             entityAnnotation["metadata"]={"White_List":True}
             entityAnnotation["boost"]=entity["boost"]
             entityAnnotation["mentions"] = []
-            surfaceForms = entity["aliases"].append(entity["preferredLabel"])
+            surfaceForms = entity["aliases"][:]
+            surfaceForms.append(entity["preferredLabel"])
             salience = 0
+            mentionsList = []
             for surfaceForm in surfaceForms:
-                beginOffsets = self.findAllSubstringOffsets(articleAsString, surfaceForm)
-                salience += self.__calculateOffsetRelevance__(totalLength, beginOffsets)
-                for offset in beginOffsets:
-                    entityAnnotation["mentions"].append({"text": {"content": surfaceForm,"beginOffset": offset},"type": entity["typeP"]})
+                beginOffsets = self.findAllSubstringOffsets(articleAsString, surfaceForm)#each list has distinct elements
+                mentionsList.append({"content":surfaceForm, "beginOffsets":beginOffsets})
+            #clean up duplicate offsets
+            for mentionsListIdx in range(len(mentionsList)-1):
+                for offsetTemp in mentionsList[mentionsListIdx]["beginOffsets"]:
+                    for mentionLargetIdx in range(mentionsListIdx+1, len(mentionsList)):
+                        try:
+                            mentionsList[mentionLargetIdx]["beginOffsets"].remove(offsetTemp)
+                        except:
+                            pass
+                        
+            cleanListOffsets = []
+            for mention in mentionsList:
+                for offset in mention["beginOffsets"]:
+                    entityAnnotation["mentions"].append({"text": {"content": mention["content"],"beginOffset": offset},"type": entity["typeP"]})
+                    cleanListOffsets.append(offset)
+            
+            salience += self.__calculateOffsetRelevance__(totalLength, cleanListOffsets)
+            
+            #print("mentions "+ entity["preferredLabel"])
+            #for offset in cleanListOffsets:
+            #    print(offset)
+            
             entityAnnotation["salience"] = salience      
             annotationSet.append(entityAnnotation)  
         return annotationSet
             
-    def __calculateOffsetRelevance__(totalLength, listOfOffsets):
+    def __calculateOffsetRelevance__(self, totalLength, listOfOffsets):
         relevance = 0
         for offset in listOfOffsets:
             relevance += totalLength/(offset + totalLength)
@@ -143,15 +162,15 @@ class sbExtractor:
     def findAllSubstringOffsets(self, articleString, entityForm):
         result = []
         k = 0
-        articleString.lower()
-        entityForm.lower()
-        while k < len(articleString):
-            k = articleString.find(entityForm, k)
+        articleLower = articleString.lower()
+        entityLower = entityForm.lower()
+        while k < len(articleLower):
+            k = articleLower.find(entityLower, k)
             if k == -1:
                 return result
             else:
                 result.append(k)
-                k += len(entityForm) 
+                k += len(entityLower) 
         return result
 
     
@@ -184,14 +203,14 @@ class sbExtractor:
         returnDict = {}
         returnDict["entitiesDict"]={}
         returnDict["sentencesDict"]={}
-        if (annotationsDict.has_key("language")):
+        if ("language" in annotationsDict):
             returnDict["entitiesDict"]["language"]=annotationsDict["language"]
             returnDict["sentencesDict"]["language"]=annotationsDict["language"]
-        if (annotationsDict.has_key("entities")):
+        if ("entities" in annotationsDict):
             returnDict["entitiesDict"]["entities"]=annotationsDict["entities"]
-        if (annotationsDict.has_key("documentSentiment")):
+        if ("documentSentiment" in annotationsDict):
             returnDict["sentencesDict"]["documentSentiment"]=annotationsDict["documentSentiment"]
-        if (annotationsDict.has_key("sentences")):
+        if ("sentences" in annotationsDict):
             returnDict["sentencesDict"]["sentences"]=annotationsDict["sentences"]
         return returnDict
     
@@ -266,7 +285,7 @@ class sbExtractor:
             return sentenceList
         else:
             #order by relevance to get the top n
-            sortedSentences = sorted(sentenceList, key = lambda sentenceTemp: sentenceTemp["relevance"])    
+            sortedSentences = sorted(sentenceList, key = lambda sentenceTemp: sentenceTemp["relevance"],reverse=True)    
             sortedSentences = sortedSentences[:nbOfSentences]
             #return in chronological order
             return sorted(sortedSentences, key = lambda sentenceTemp: sentenceTemp["text"]["beginOffset"])
@@ -309,7 +328,7 @@ class sbExtractor:
         
             if(nbSentences < len(listOfSentences)):
                 #sort by relevance
-                listOfSentences = sorted(listOfSentences, key = lambda sentenceTemp: sentenceTemp["relevance"]) 
+                listOfSentences = sorted(listOfSentences, key = lambda sentenceTemp: sentenceTemp["relevance"],reverse=True) 
                 #take top n
                 listOfSentences = listOfSentences[:nbSentences]
                 #sort chronologically
