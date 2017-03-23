@@ -179,4 +179,6 @@ jsonAsString = [""" {
     
 
 article1 = sbExtractor.sbExtractor(textOfArticle[1], jsonAsString[1])
-
+article1.summary(1)
+article1.summary(2)
+article1.summary(3)
