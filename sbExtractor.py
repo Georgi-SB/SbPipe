@@ -30,6 +30,7 @@ class sbExtractor:
 #      "metadata": {
 #        "mid": "/m/0bx0l",
 #        "wikipedia_url": "http://en.wikipedia.org/wiki/Lawrence_of_Arabia_(film)"
+#       "White_List": True/False, or if not a white list entity the field is simply missing   
 #      },
 #      "salience": 0.75222147,
 #      "mentions": [
@@ -98,6 +99,7 @@ class sbExtractor:
             language = tempDict["language"]
         whiteList = self.__whiteListAnnotations__(articleAsString, language)
         self.entitiesDict["entities"] += whiteList
+        self.__addVotabilityScores__()
         
         self.sentencesDict = {}
         if (useOfflineSentences):
@@ -175,19 +177,30 @@ class sbExtractor:
 
     
     def __addVotabilityScores__(self):
-        for entity in self.entitiesDict["entities"]:
-            votability = entity["salience"]
+        for entityIdx in range(len(self.entitiesDict["entities"])):
+            votability = self.entitiesDict["entities"][entityIdx]["salience"]
+            entity = self.entitiesDict["entities"][entityIdx]
             if (not ( ("White_List" in entity["metadata"] ) or ("wikipedia_url" in entity["metadata"] ) ) ) :
                 votability = 0
             elif (  ("White_List" in entity["metadata"] ) and  ("boost" in entity ) ):
                 votability *= entity["boost"]
-            else:
-                # TODO add boosts
+                # assume all white list entities are propper 
+                votability *= internalBoosts.boostForProper
+            else: # this is the case where we have a trusted/wikipedia entity
+                # TODO add boosts per article type
                 boost = 1
                 if (entity["type"] in internalBoosts.boostsGeneral):
-                    boost = internalBoosts.boostsGeneral[entity["type"]]
+                    boost = internalBoosts.boostsGeneral[self.entitiesDict["entities"][entityIdx]["type"]]
+                isProper = False
+                for mention in entity["mentions"]:
+                    if ("type" in mention):
+                        if (mention["type"]=="PROPER"):
+                            isProper = True
+                            break
+                if (isProper):
+                    boost *= internalBoosts.boostForProper
                 votability *= boost
-                entity["votability"] = votability
+            self.entitiesDict["entities"][entityIdx]["votability"] = votability
         return self.entitiesDict
                 
 
