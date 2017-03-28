@@ -339,9 +339,12 @@ class sbExtractor:
     def conceptSummary(self,entityName, nbSentences):
         """summary wrt to a concept""" 
         listOfSentences = self.conceptSummaryInternal(entityName, nbSentences)
-        summaryAsString = listOfSentences[0]["text"]["content"]
-        for sentenceIdx in range(1,len(listOfSentences)):
-            summaryAsString = summaryAsString + " " + listOfSentences[sentenceIdx]["text"]["content"]
+        summaryAsString = "" #listOfSentences[0]["text"]["content"]
+        if (len(listOfSentences)>=1): 
+            for sentenceIdx in range(0,len(listOfSentences)):
+                summaryAsString = summaryAsString + " " + listOfSentences[sentenceIdx]["text"]["content"]
+        else:
+            summaryAsString = "Entity" + entityName +  "not found in article!"
         return summaryAsString
                                 
                            
