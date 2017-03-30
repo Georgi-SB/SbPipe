@@ -100,7 +100,8 @@ class sbExtractor:
         whiteList = self.__whiteListAnnotations__(articleAsString, language)
         self.entitiesDict["entities"] += whiteList
         self.__addVotabilityScores__()
-        
+        self.__addPreferredWikipediaLabels__()
+        self.entitiesDict["entities"] = sorted(self.entitiesDict["entities"], key = lambda entityTemp: entityTemp["votability"],reverse=True)    
         self.sentencesDict = {}
         if (useOfflineSentences):
             self.sentencesDict = self.sentenceOffsetsAndSentimentBlob(articleAsString)
@@ -119,6 +120,7 @@ class sbExtractor:
         for entity in whiteListDict:
             entityAnnotation = {}
             entityAnnotation["name"]= entity["preferredLabel"]
+            entityAnnotation["preferredLabel"]= entity["preferredLabel"]
             entityAnnotation["type"]= entity["type"]
             entityAnnotation["metadata"]={"White_List":True}
             entityAnnotation["boost"]=entity["boost"]
@@ -203,8 +205,16 @@ class sbExtractor:
             self.entitiesDict["entities"][entityIdx]["votability"] = votability
         return self.entitiesDict
                 
-
-        
+    def __addPreferredWikipediaLabels__(self):
+        for entityIdx in range(len(self.entitiesDict["entities"])):
+            if not("preferredLabel" in self.entitiesDict["entities"][entityIdx]):
+                if ("wikipedia_url" in  self.entitiesDict["entities"][entityIdx]):
+                    prefLabel=self.entitiesDict["entities"][entityIdx]["wikipedia_url"]
+                    prefLabel=prefLabel.rfind("/")
+                    prefLabel.replace("_"," ")
+                    self.entitiesDict["entities"][entityIdx]["preferredLabel"]=prefLabel
+        return self.entitiesDict 
+                                             
     def __gcpAnnotation__(self,textAsString):
         """Call gcp with a string to get initial annotations.
         Transform data in a python dictionary"""
