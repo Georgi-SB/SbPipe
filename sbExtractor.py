@@ -208,11 +208,10 @@ class sbExtractor:
     def __addPreferredWikipediaLabels__(self):
         for entityIdx in range(len(self.entitiesDict["entities"])):
             if not("preferredLabel" in self.entitiesDict["entities"][entityIdx]):
-                if ("wikipedia_url" in  self.entitiesDict["entities"][entityIdx]):
-                    prefLabel=self.entitiesDict["entities"][entityIdx]["wikipedia_url"]
-                    prefLabel=prefLabel.rfind("/")
-                    prefLabel.replace("_"," ")
-                    self.entitiesDict["entities"][entityIdx]["preferredLabel"]=prefLabel
+                if ("wikipedia_url" in  self.entitiesDict["entities"][entityIdx]["metadata"]):
+                    prefLabel=self.entitiesDict["entities"][entityIdx]["metadata"]["wikipedia_url"]
+                    prefLabel=prefLabel[prefLabel.rfind("/")+1 :]
+                    self.entitiesDict["entities"][entityIdx]["preferredLabel"]=prefLabel.replace("_"," ")
         return self.entitiesDict 
                                              
     def __gcpAnnotation__(self,textAsString):

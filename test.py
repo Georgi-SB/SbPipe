@@ -190,6 +190,8 @@ article3 = sbExtractor.sbExtractor(textOfArticle[1], jsonAsString[2])
 article3.summary(1)
 article3.summary(2)
 article3.summary(3)
-
+a = article1.getEntities()
+aa=a["entities"]
+aa[:10]
 
 
