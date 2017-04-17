@@ -91,7 +91,7 @@ class sbExtractor:
         self.articleAsString = articleAsString
         self.lengthOfDocument = len(articleAsString)
         # self.annotationDict = self.__gcpAnnotation__(articleAsString) - this is the right one but the API call is not implemented yet
-        tempDict = self.__gcpAnnotation__(annotationsAsJsonString) #gets the full gcp annotation dictionary
+        tempDict = self.__gcpAnnotation__(annotationsAsJsonString) #gets the full gcp annotation dictionary as json format string
         language = "en"
         self.entitiesDict = tempDict["entitiesDict"]
         #add white list annotations
@@ -112,6 +112,7 @@ class sbExtractor:
         self.sentenceRelevances()
     
     
+    #calculates the white list annotations as a dictionary. ready to be added to the entities dict
     def __whiteListAnnotations__(self, articleAsString, language = "en"):
         """ annotate white list entities """
         whiteListDict = whiteList.whiteList["general"] + whiteList.whiteList[language]
@@ -176,6 +177,17 @@ class sbExtractor:
                 result.append(k)
                 k += len(entityLower) 
         return result
+
+    def __addCustomRelevance__(self):
+        totalLength = self.lengthOfDocument + 1
+        for entityIdx in range(len(self.entitiesDict["entities"])):
+            relevance = 0
+            entity = self.entitiesDict["entities"][entityIdx]
+            for mention in entity["mentions"]:
+                if ("beginOffset" in mention):
+                    relevance += mention["beginOffset"]/totalLength
+            self.entitiesDict["entities"][entityIdx]["customRelevance"] = relevance
+        return self.entitiesDict
 
     
     def __addVotabilityScores__(self):
