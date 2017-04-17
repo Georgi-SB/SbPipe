@@ -101,6 +101,7 @@ class sbExtractor:
         self.entitiesDict["entities"] += whiteList
         self.__addVotabilityScores__()
         self.__addPreferredWikipediaLabels__()
+        self.__addCustomRelevance__()
         self.entitiesDict["entities"] = sorted(self.entitiesDict["entities"], key = lambda entityTemp: entityTemp["votability"],reverse=True)    
         self.sentencesDict = {}
         if (useOfflineSentences):
@@ -184,8 +185,9 @@ class sbExtractor:
             relevance = 0
             entity = self.entitiesDict["entities"][entityIdx]
             for mention in entity["mentions"]:
-                if ("beginOffset" in mention):
-                    relevance += mention["beginOffset"]/totalLength
+                if ("text" in mention):
+                    if ("beginOffset" in mention["text"]):
+                        relevance += mention["text"]["beginOffset"]/totalLength
             self.entitiesDict["entities"][entityIdx]["customRelevance"] = relevance
         return self.entitiesDict
 
